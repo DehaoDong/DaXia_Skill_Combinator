@@ -161,6 +161,37 @@
             background-color: #e8f5e9;
             border-radius: 4px;
         }
+        .loading-container {
+            display: none;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .loading-container.active {
+            display: block;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        .loading-text {
+            margin-top: 10px;
+            color: #666;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Disable button style */
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -201,13 +232,20 @@
             <button onclick="addSearchCondition()">添加条件</button>
             <div id="searchConditions" class="tag-list"></div>
             <div style="margin-top: 10px;">
-                <input type="number" id="maxSkills" placeholder="最大功法数量" value="5" min="1">
-                <button onclick="searchCombinations()">查询组合</button>
+                <label for="maxSkills">最大功法数量：</label>
+                <input type="number" id="maxSkills" placeholder="最大功法数量" value="10" min="1">
+                <button id="searchButton" onclick="searchCombinations()">查询组合</button>
             </div>
         </div>
     </div>
 
-    <!-- 查询结果 -->
+    <!-- Add loading container before results section -->
+    <div id="loadingContainer" class="loading-container">
+        <div class="spinner"></div>
+        <div class="loading-text">正在查找组合，请稍候...</div>
+    </div>
+
+    <!-- Results section remains the same -->
     <div class="section">
         <h2>查询结果</h2>
         <div class="results-summary" id="resultsSummary"></div>
@@ -379,39 +417,60 @@
         }
 
         async function searchCombinations() {
-            const max_skills = parseInt(document.getElementById('maxSkills').value) || 5;
+            // Get and disable the search button
+            const searchButton = document.getElementById('searchButton');
+            searchButton.disabled = true;
             
-            const response = await fetch('/search_combinations', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    required_tags: Object.keys(searchConditions),
-                    tag_counts: searchConditions,
-                    max_skills: max_skills
-                })
-            });
+            // Show loading indicator
+            const loadingContainer = document.getElementById('loadingContainer');
+            loadingContainer.classList.add('active');
             
-            const combinations = await response.json();
+            // Clear previous results
             const results = document.getElementById('results');
             const summary = document.getElementById('resultsSummary');
+            results.innerHTML = '';
+            summary.innerHTML = '';
             
-            if (combinations.length === 0) {
-                summary.innerHTML = '<strong>未找到满足条件的组合</strong>';
-                results.innerHTML = '';
-                return;
-            }
+            try {
+                const max_skills = parseInt(document.getElementById('maxSkills').value) || 10;
+                
+                const response = await fetch('/search_combinations', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        required_tags: Object.keys(searchConditions),
+                        tag_counts: searchConditions,
+                        max_skills: max_skills
+                    })
+                });
+                
+                const combinations = await response.json();
+                
+                if (combinations.length === 0) {
+                    summary.innerHTML = '<strong>未找到满足条件的组合</strong>';
+                    results.innerHTML = '';
+                    return;
+                }
 
-            summary.innerHTML = `<strong>找到 ${combinations.length} 个符合条件的组合</strong>`;
-            results.innerHTML = combinations.map((combo, index) => `
-                <div class="combination">
-                    <h3>组合 ${index + 1}：${combo.skills.map(skill => skill.name).join(' + ')}</h3>
-                    <div class="tag-list">
-                        ${Object.entries(combo.combined_tags).map(([tag, count]) => `
-                            <span class="tag">${tag} (${count})</span>
-                        `).join('')}
+                summary.innerHTML = `<strong>找到 ${combinations.length} 个符合条件的组合</strong>`;
+                results.innerHTML = combinations.map((combo, index) => `
+                    <div class="combination">
+                        <h3>组合 ${index + 1}：${combo.skills.map(skill => skill.name).join(' + ')}</h3>
+                        <div class="tag-list">
+                            ${Object.entries(combo.combined_tags).map(([tag, count]) => `
+                                <span class="tag">${tag} (${count})</span>
+                            `).join('')}
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `).join('');
+            } catch (error) {
+                summary.innerHTML = '<strong>查询过程中发生错误，请重试</strong>';
+                console.error('Error during combination search:', error);
+            } finally {
+                // Hide loading indicator and re-enable search button
+                loadingContainer.classList.remove('active');
+                searchButton.disabled = false;
+            }
         }
 
         // 添加按回车搜索功能
