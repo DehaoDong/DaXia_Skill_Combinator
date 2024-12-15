@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>功法组合查询系统</title>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .tag {
+            background: #f0f0f0;
+            padding: 5px 10px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .tag button {
+            border: none;
+            background: none;
+            color: #999;
+            cursor: pointer;
+            padding: 0 5px;
+        }
+        .combination {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+        .combination:hover {
+            background-color: #f5f5f5;
+        }
+        input[type="text"], input[type="number"] {
+            padding: 8px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 8px 15px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .search-section {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .filter-section {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+        }
+        .skill-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+        .skill-item {
+            padding: 8px;
+            background: white;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        .skill-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        .skill-name {
+            font-weight: bold;
+            margin: 0;
+            font-size: 14px;
+        }
+        .skill-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .skill-tag {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .delete-btn {
+            padding: 2px 6px;
+            font-size: 12px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+        .delete-btn:hover {
+            background: #cc0000;
+        }
+        .search-section {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .filter-section {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+        }
+        .skill-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .filter-tag {
+            background: #e0e0e0;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .filter-tag.active {
+            background: #4CAF50;
+            color: white;
+        }
+        .results-summary {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #e8f5e9;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>功法组合查询系统</h1>
+
+    <!-- 功法库 -->
+    <div class="section">
+        <h2>功法库</h2>
+        <div class="search-section">
+            <input type="text" id="skillSearch" placeholder="搜索功法名称或标签" style="flex: 1;">
+            <button onclick="searchSkills()">搜索</button>
+        </div>
+        <div class="filter-section">
+            <div>标签筛选：</div>
+            <div id="tagFilters" class="skill-filters"></div>
+        </div>
+        <div id="skillList" class="skill-grid"></div>
+    </div>
+
+    <!-- 添加功法 -->
+    <div class="section">
+        <h2>添加功法</h2>
+        <div>
+            <input type="text" id="skillName" placeholder="功法名称">
+            <input type="text" id="newTag" placeholder="标签名称">
+            <button onclick="addTag()">添加标签</button>
+            <div id="tagList" class="tag-list"></div>
+            <button onclick="addSkill()" style="margin-top: 10px;">保存功法</button>
+        </div>
+    </div>
+
+    <!-- 查询组合 -->
+    <div class="section">
+        <h2>查询组合</h2>
+        <div>
+            <input type="text" id="searchTag" placeholder="标签名称">
+            <input type="number" id="tagCount" placeholder="最少数量" min="1">
+            <button onclick="addSearchCondition()">添加条件</button>
+            <div id="searchConditions" class="tag-list"></div>
+            <div style="margin-top: 10px;">
+                <input type="number" id="maxSkills" placeholder="最大功法数量" value="5" min="1">
+                <button onclick="searchCombinations()">查询组合</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 查询结果 -->
+    <div class="section">
+        <h2>查询结果</h2>
+        <div class="results-summary" id="resultsSummary"></div>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        let currentTags = new Set();
+        let searchConditions = {};
+        let allTags = new Set();
+        let activeFilters = new Set();
+
+        function addTag() {
+            const tagInput = document.getElementById('newTag');
+            const tag = tagInput.value.trim();
+            if (tag && !currentTags.has(tag)) {
+                currentTags.add(tag);
+                updateTagList();
+                tagInput.value = '';
+            }
+        }
+
+        function removeTag(tag) {
+            currentTags.delete(tag);
+            updateTagList();
+        }
+
+        function updateTagList() {
+            const tagList = document.getElementById('tagList');
+            tagList.innerHTML = Array.from(currentTags).map(tag => `
+                <span class="tag">
+                    ${tag}
+                    <button onclick="removeTag('${tag}')">&times;</button>
+                </span>
+            `).join('');
+        }
+
+        function addSearchCondition() {
+            const tag = document.getElementById('searchTag').value.trim();
+            const count = parseInt(document.getElementById('tagCount').value);
+            if (tag && count > 0) {
+                searchConditions[tag] = count;
+                updateSearchConditions();
+                document.getElementById('searchTag').value = '';
+                document.getElementById('tagCount').value = '';
+            }
+        }
+
+        function removeSearchCondition(tag) {
+            delete searchConditions[tag];
+            updateSearchConditions();
+        }
+
+        function updateSearchConditions() {
+            const conditionsList = document.getElementById('searchConditions');
+            conditionsList.innerHTML = Object.entries(searchConditions).map(([tag, count]) => `
+                <span class="tag">
+                    ${tag} (${count})
+                    <button onclick="removeSearchCondition('${tag}')">&times;</button>
+                </span>
+            `).join('');
+        }
+
+        async function loadTagFilters() {
+            const response = await fetch('/get_all_tags');
+            const tags = await response.json();
+            allTags = new Set(tags);
+            
+            const filterContainer = document.getElementById('tagFilters');
+            filterContainer.innerHTML = Array.from(allTags).map(tag => `
+                <span class="filter-tag" onclick="toggleFilter('${tag}')">${tag}</span>
+            `).join('');
+        }
+
+        function toggleFilter(tag) {
+            const elements = document.querySelectorAll(`.filter-tag`);
+            elements.forEach(el => {
+                if (el.textContent === tag) {
+                    el.classList.toggle('active');
+                }
+            });
+            
+            if (activeFilters.has(tag)) {
+                activeFilters.delete(tag);
+            } else {
+                activeFilters.add(tag);
+            }
+            
+            searchSkills();
+        }
+
+        async function searchSkills() {
+            const searchQuery = document.getElementById('skillSearch').value;
+            const queryParams = new URLSearchParams();
+            
+            if (searchQuery) {
+                queryParams.append('search', searchQuery);
+            }
+            
+            activeFilters.forEach(tag => {
+                queryParams.append('tags[]', tag);
+            });
+            
+            const response = await fetch(`/get_skills?${queryParams.toString()}`);
+            const skills = await response.json();
+            updateSkillList(skills);
+        }
+
+        function updateSkillList(skills) {
+            const skillList = document.getElementById('skillList');
+            
+            if (skills.length === 0) {
+                skillList.innerHTML = '<p>未找到匹配的功法</p>';
+                return;
+            }
+            
+            skillList.innerHTML = skills.map(skill => `
+                <div class="skill-item">
+                    <div class="skill-header">
+                        <span class="skill-name">${skill.name}</span>
+                        <button class="delete-btn" onclick="deleteSkill(${skill.id})">删除</button>
+                    </div>
+                    <div class="skill-tags">
+                        ${skill.tags.map(tag => `
+                            <span class="skill-tag">${tag}</span>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function deleteSkill(skillId) {
+            if (!confirm('确定要删除这个功法吗？')) {
+                return;
+            }
+            
+            await fetch(`/delete_skill/${skillId}`, {
+                method: 'DELETE'
+            });
+            
+            searchSkills();
+            loadTagFilters();
+        }
+
+        async function addSkill() {
+            const name = document.getElementById('skillName').value.trim();
+            if (!name) {
+                alert('请输入功法名称');
+                return;
+            }
+            if (currentTags.size === 0) {
+                alert('请至少添加一个标签');
+                return;
+            }
+
+            await fetch('/add_skill', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    name: name,
+                    tags: Array.from(currentTags)
+                })
+            });
+
+            loadSkills();
+            document.getElementById('skillName').value = '';
+            currentTags.clear();
+            updateTagList();
+        }
+
+        async function searchCombinations() {
+            const max_skills = parseInt(document.getElementById('maxSkills').value) || 5;
+            
+            const response = await fetch('/search_combinations', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    required_tags: Object.keys(searchConditions),
+                    tag_counts: searchConditions,
+                    max_skills: max_skills
+                })
+            });
+            
+            const combinations = await response.json();
+            const results = document.getElementById('results');
+            const summary = document.getElementById('resultsSummary');
+            
+            if (combinations.length === 0) {
+                summary.innerHTML = '<strong>未找到满足条件的组合</strong>';
+                results.innerHTML = '';
+                return;
+            }
+
+            summary.innerHTML = `<strong>找到 ${combinations.length} 个符合条件的组合</strong>`;
+            results.innerHTML = combinations.map((combo, index) => `
+                <div class="combination">
+                    <h3>组合 ${index + 1}：${combo.skills.map(skill => skill.name).join(' + ')}</h3>
+                    <div class="tag-list">
+                        ${Object.entries(combo.combined_tags).map(([tag, count]) => `
+                            <span class="tag">${tag} (${count})</span>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 添加按回车搜索功能
+        document.getElementById('skillSearch').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchSkills();
+            }
+        });
+
+        // 添加新标签时的回车功能
+        document.getElementById('newTag').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addTag();
+            }
+        });
+
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSkills();
+        });
+
+        // 加载功法列表和标签筛选器
+        async function loadSkills() {
+            await Promise.all([
+                searchSkills(),
+                loadTagFilters()
+            ]);
+        }
+    </script>
+</body>
+</html>
