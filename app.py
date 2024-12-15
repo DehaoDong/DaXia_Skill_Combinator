@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 import time
+from math import comb
+from tqdm import tqdm
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///skills.db'
@@ -93,21 +95,20 @@ def search_combinations():
     all_skills = Skill.query.all()
     skill_tags = [(skill, skill.get_tags()) for skill in all_skills]
     
-    # 构建标签到功法的映射
-    tag_to_skills = {}
+    # 过滤功法
+    filtered_skills = []
+    
     if required_tags or tag_counts:
         needed_tags = required_tags.union(tag_counts.keys())
-        for tag in needed_tags:
-            tag_to_skills[tag] = set()
+        
+        # 构建标签到功法的映射
+        tag_to_skills = {tag: set() for tag in needed_tags}
         
         for skill, tags in skill_tags:
             for tag in tags:
                 if tag in needed_tags:
                     tag_to_skills[tag].add(skill)
-    
-    # 过滤功法
-    filtered_skills = []
-    if required_tags or tag_counts:
+                    
         candidate_skills = set()
         for tag in needed_tags:
             candidate_skills.update(tag_to_skills[tag])
@@ -123,19 +124,18 @@ def search_combinations():
     if not filtered_skills:
         return jsonify([])
 
+    # 计算总组合数
+    n = len(filtered_skills)
+    total_combinations = comb(n, max_skills)
+    print(f"需要检查的组合总数: {total_combinations}")
+
     valid_combinations = []
-    combinations_checked = 0
-    last_print_time = time.time()
+    
+    # 创建进度条
+    pbar = tqdm(total=total_combinations, desc="搜索组合", unit="combo")
 
     def check_combination_valid(combo):
-        nonlocal combinations_checked, last_print_time
-        combinations_checked += 1
-        
-        current_time = time.time()
-        if current_time - last_print_time >= 2.0:  # 每2秒更新一次进度
-            elapsed = current_time - start_time
-            print(f"\r检查进度: {combinations_checked} 组合, {len(valid_combinations)} 个有效, {elapsed:.1f}s", end="")
-            last_print_time = current_time
+        pbar.update(1)  # 更新进度条
         
         tag_counts_map = {}
         for skill, tags in combo:
@@ -154,6 +154,9 @@ def search_combinations():
             'skills': [{'name': skill.name, 'tags': list(tags)} for skill, tags in combo],
             'combined_tags': tag_counts_map
         })
+        
+        # 更新进度条描述以显示找到的有效组合数
+        pbar.set_postfix({'找到': len(valid_combinations)})
         return True
 
     current_combo = []
@@ -161,12 +164,14 @@ def search_combinations():
         if len(valid_combinations) >= 1000:
             return
             
-        if remaining == 0:  # 已经选够了指定数量的功法
+        if remaining == 0:
             check_combination_valid(current_combo)
             return
         
-        # 如果剩余的功法不够填满组合，直接返回
         if len(filtered_skills) - start_idx < remaining:
+            # 更新跳过的组合数
+            skipped = comb(len(filtered_skills) - start_idx, remaining)
+            pbar.update(skipped)
             return
         
         for i in range(start_idx, len(filtered_skills)):
@@ -174,13 +179,14 @@ def search_combinations():
             find_combinations(i + 1, remaining - 1)
             current_combo.pop()
 
-    # 只搜索最大数量的组合
-    print(f"\n搜索 {max_skills} 个功法组合...")
-    find_combinations(0, max_skills)
-    print(f"找到 {len(valid_combinations)} 个组合")
+    try:
+        find_combinations(0, max_skills)
+    finally:
+        pbar.close()  # 确保进度条正常关闭
 
     end_time = time.time()
-    print(f"\n搜索完成: 找到 {len(valid_combinations)} 个组合, 总耗时 {end_time - start_time:.1f}s")
+    print(f"\n搜索完成: 找到 {len(valid_combinations)} 个有效组合")
+    print(f"总耗时: {end_time - start_time:.1f}s")
     
     return jsonify(valid_combinations)
 
